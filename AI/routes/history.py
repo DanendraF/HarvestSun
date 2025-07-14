@@ -2,21 +2,30 @@ from fastapi import APIRouter, Query, HTTPException
 from fastapi.responses import JSONResponse
 from fastapi import Request
 from fastapi.responses import JSONResponse
-from services.history_service import delete_history
+from services.history_service import get_history, delete_history, get_history_detail
 
 router = APIRouter()
 
 # Endpoint baru: /api/chat-history?user_id=xxx
 @router.get("/api/chat-history")
 async def chat_history_endpoint(user_id: str = Query(...)):
-    # TODO: Ambil history dari database/service
-    return JSONResponse(content={"history": [], "user_id": user_id})
+    try:
+        print("Ambil history untuk user_id:", user_id)
+        history = get_history(user_id)
+        print("Hasil dari Supabase:", history)
+        return JSONResponse(content={"history": history, "user_id": user_id})
+    except Exception as e:
+        print("Error get_history:", str(e))
+        return JSONResponse(content={"history": [], "user_id": user_id, "error": str(e)}, status_code=500)
 
 # Endpoint lama: /history/{user_id} (untuk kompatibilitas)
 @router.get("/history/{user_id}")
 async def history_legacy(user_id: str):
-    # TODO: Ambil history dari database/service
-    return JSONResponse(content={"history": [], "user_id": user_id})
+    try:
+        history = get_history(user_id)
+        return JSONResponse(content={"history": history, "user_id": user_id})
+    except Exception as e:
+        return JSONResponse(content={"history": [], "user_id": user_id, "error": str(e)}, status_code=500)
 
 @router.post("/chat")
 async def chat_legacy(request: Request):
@@ -37,4 +46,12 @@ async def delete_history_endpoint(chat_id: str):
         delete_history(chat_id)
         return JSONResponse(content={"success": True})
     except Exception as e:
-        return JSONResponse(content={"success": False, "error": str(e)}, status_code=500) 
+        return JSONResponse(content={"success": False, "error": str(e)}, status_code=500)
+
+@router.get("/history/detail/{chat_id}")
+async def history_detail(chat_id: str):
+    try:
+        detail = get_history_detail(chat_id)
+        return JSONResponse(content=detail)
+    except Exception as e:
+        return JSONResponse(content={"error": str(e)}, status_code=500) 

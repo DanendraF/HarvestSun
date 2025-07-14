@@ -20,6 +20,7 @@ export default function ChatbotPage() {
   const chatBoxRef = useRef<HTMLDivElement>(null);
   // Tambahkan state untuk deteksi desktop
   const [isDesktop, setIsDesktop] = useState(false);
+  const [activeChatId, setActiveChatId] = useState<string | null>(null);
 
   const suggestionsList = [
     "Apa tanaman terbaik untuk musim hujan?",
@@ -58,8 +59,8 @@ export default function ChatbotPage() {
     if (!user || !user.id) return;
     const res = await fetch(`/api/chat-history?user_id=${user.id}`);
     const data = await res.json();
-    if (Array.isArray(data)) {
-      setHistory(data);
+    if (Array.isArray(data.history)) {
+      setHistory(data.history);
       setHistoryError("");
     } else {
       setHistory([]);
@@ -71,7 +72,13 @@ export default function ChatbotPage() {
     const res = await fetch(`/api/chat-history/detail?chat_id=${chat_id}`);
     const data = await res.json();
     if (data && data.messages) {
-      setMessages(data.messages);
+      // Mapping messages dari Supabase ke format state messages FE
+      const mapped = data.messages.map((msg: any) => ({
+        role: msg.role,
+        text: msg.content
+      }));
+      setMessages(mapped);
+      setActiveChatId(chat_id);
     }
     setSidebarOpen(false);
   }
@@ -96,27 +103,31 @@ export default function ChatbotPage() {
       const response = await fetch("/api/chatbot", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ user_id: user.id, question }),
+        body: JSON.stringify({ user_id: user.id, question, chat_id: activeChatId }),
       });
       const data = await response.json();
       const reply = data.reply || "Tidak ada respons dari AI.";
       addMessage("ai", reply);
-      // Tambahkan ke history jika chat_id ada
-      if (data.chat_id) {
-        setHistory((prev) => [
-          {
-            id: data.chat_id,
-            user_id: user.id,
-            title: question.slice(0, 30),
-            last_message: reply,
-            messages: [
-              { role: "user", content: question },
-              { role: "ai", content: reply }
-            ],
-            created_at: new Date()
-          },
-          ...prev
-        ]);
+      // Update activeChatId jika dapat chat_id baru
+      if (data.chat_id && data.chat_id !== activeChatId) {
+        setActiveChatId(data.chat_id);
+        // Tambahkan ke history hanya jika chat_id baru
+        if (!history.some((h) => h.id === data.chat_id)) {
+          setHistory((prev) => [
+            {
+              id: data.chat_id,
+              user_id: user.id,
+              title: question.slice(0, 30),
+              last_message: reply,
+              messages: [
+                { role: "user", content: question },
+                { role: "ai", content: reply }
+              ],
+              created_at: new Date()
+            },
+            ...prev
+          ]);
+        }
       }
       showRandomSuggestions();
     } catch (err) {
@@ -138,6 +149,10 @@ export default function ChatbotPage() {
       const data = await res.json();
       if (data.success) {
         setHistory((prev) => prev.filter((item) => item.id !== chat_id));
+        if (activeChatId === chat_id) {
+          setActiveChatId(null);
+          setMessages([{ role: "ai", text: "👋 Halo! Saya siap membantu pertanyaan seputar pertanian digital. Silakan tanya apa saja." }]);
+        }
       }
     } catch (e) {
       // Optional: tampilkan error
@@ -152,13 +167,24 @@ export default function ChatbotPage() {
             <h1 className="text-2xl font-bold flex items-center gap-2 text-earth-green-700 mb-2">
               <MessageCircle className="h-6 w-6 text-earth-green-600" /> Chatbot
             </h1>
-            <button
-              className="flex items-center gap-1 bg-green-100 hover:bg-green-200 text-green-800 px-3 py-1 rounded-lg text-sm border border-green-200 shadow-sm absolute right-0 top-0 mt-1 mr-2 z-10"
-              style={{ position: 'absolute', right: 0, top: 0 }}
-              onClick={() => setSidebarOpen(true)}
-            >
-              <History className="h-5 w-5" /> Riwayat
-            </button>
+            <div className="flex gap-2 absolute right-0 top-0 mt-1 mr-2 z-10">
+              <button
+                className="flex items-center gap-1 bg-blue-100 hover:bg-blue-200 text-blue-800 px-3 py-1 rounded-lg text-sm border border-blue-200 shadow-sm"
+                onClick={() => {
+                  setMessages([{ role: "ai", text: "👋 Halo! Saya siap membantu pertanyaan seputar pertanian digital. Silakan tanya apa saja." }]);
+                  setSidebarOpen(false);
+                  setActiveChatId(null);
+                }}
+              >
+                <Bot className="h-5 w-5" /> New Chat
+              </button>
+              <button
+                className="flex items-center gap-1 bg-green-100 hover:bg-green-200 text-green-800 px-3 py-1 rounded-lg text-sm border border-green-200 shadow-sm"
+                onClick={() => setSidebarOpen(true)}
+              >
+                <History className="h-5 w-5" /> Riwayat
+              </button>
+            </div>
           </div>
           <div className="w-full flex-1 flex flex-col rounded-2xl bg-white/80 shadow-xl border border-green-100 h-full min-h-[400px] max-h-full" style={{ minHeight: 420 }}>
             <div

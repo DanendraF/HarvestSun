@@ -50,6 +50,7 @@ export default function TugasPenyuluhPage() {
   const [editId, setEditId] = useState<string | null>(null);
   // State untuk modal view tugas
   const [viewTugas, setViewTugas] = useState<any | null>(null);
+  const [lahanList, setLahanList] = useState<any[]>([]);
 
   // Fetch daftar gapoktan satu wilayah
   useEffect(() => {
@@ -82,9 +83,11 @@ export default function TugasPenyuluhPage() {
     if (name === 'lampiran') {
       setForm(f => ({ ...f, lampiran: files[0] }));
     } else if (name === 'gapoktan_id') {
-      // Update wilayah otomatis saat gapoktan dipilih
-      const gapoktan = gapoktanList.find(g => g.id === value);
-      setForm(f => ({ ...f, gapoktan_id: value, wilayah: gapoktan ? gapoktan.wilayah : '' }));
+      setForm(f => ({ ...f, gapoktan_id: value, wilayah: '' }));
+      // Fetch lahan milik gapoktan
+      fetch(`/api/lahan?gapoktan_id=${value}`)
+        .then(res => res.json())
+        .then(res => setLahanList(res.data || []));
     } else {
       setForm(f => ({ ...f, [name]: value }));
     }
@@ -211,9 +214,22 @@ export default function TugasPenyuluhPage() {
                   </div>
                   <div className="flex-1">
                     <label className="block text-sm font-medium mb-1">Wilayah</label>
-                    <select name="wilayah" className="w-full border rounded px-3 py-2" value={form.wilayah} onChange={handleChange} required>
-                      <option value="">Pilih Wilayah</option>
-                      {wilayahList.map(w => <option key={w} value={w}>{w}</option>)}
+                    <select
+                      name="wilayah"
+                      className="w-full border rounded px-3 py-2"
+                      value={form.wilayah}
+                      onChange={handleChange}
+                      required
+                      disabled={!form.gapoktan_id}
+                    >
+                      <option value="">
+                        {form.gapoktan_id
+                          ? (lahanList.length === 0 ? "Belum ada lahan tersedia" : "Pilih Lahan")
+                          : "Pilih Gapoktan terlebih dahulu"}
+                      </option>
+                      {lahanList.map(l => (
+                        <option key={l.id} value={l.nama}>{l.nama}</option>
+                      ))}
                     </select>
                   </div>
                 </div>

@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Progress } from '@/components/ui/progress';
@@ -30,6 +30,108 @@ import {
   FileText
 } from 'lucide-react';
 import { harvestData, weatherAlerts, productivityData, harvestTrendData, checklistItems, agendaItems, reports } from '@/data/sampleData';
+import { useRef } from 'react';
+import { useAuth } from '@/hooks/useAuth';
+
+const WILAYAH_JOGJA = [
+  { label: 'Yogyakarta', query: 'Yogyakarta' },
+  { label: 'Sleman', query: 'Sleman' },
+  { label: 'Bantul', query: 'Bantul' },
+  { label: 'Kulon Progo', query: 'Wates' }, // ibu kota Kulon Progo
+  { label: 'Gunungkidul', query: 'Wonosari' }, // ibu kota Gunungkidul
+];
+
+function CuacaCarousel() {
+  const [data, setData] = useState<any[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState('');
+  const [startIndex, setStartIndex] = useState(0);
+  const perPage = 5;
+
+  // Simpan juga alert cuaca dari API
+  const [cuacaAlerts, setCuacaAlerts] = useState<any[]>([]);
+
+  useEffect(() => {
+    setLoading(true);
+    Promise.all(
+      WILAYAH_JOGJA.map(async (wil) => {
+        try {
+          const res = await fetch(`/api/cuaca?kota=${encodeURIComponent(wil.query)}`);
+          const json = await res.json();
+          return { ...wil, ...json };
+        } catch {
+          return { ...wil, error: 'Gagal fetch' };
+        }
+      })
+    ).then((result) => {
+      setData(result);
+      // Kumpulkan semua alert dari API jika ada
+      const allAlerts = result.flatMap((item) => {
+        if (item.alerts && Array.isArray(item.alerts)) {
+          return item.alerts.map((alert: any) => ({
+            ...alert,
+            location: item.label
+          }));
+        }
+        return [];
+      });
+      setCuacaAlerts(allAlerts);
+    }).finally(() => setLoading(false));
+  }, []);
+
+  const handlePrev = () => setStartIndex((prev) => Math.max(prev - perPage, 0));
+  const handleNext = () => setStartIndex((prev) => Math.min(prev + perPage, data.length - perPage));
+
+  if (loading) return <div className="mb-2">Memuat data cuaca...</div>;
+  if (error) return <div className="mb-2 text-red-600">{error}</div>;
+
+  const visible = data.slice(startIndex, startIndex + perPage);
+
+  const carouselRender = (
+    <div className="flex items-center gap-2 mb-4">
+      <button
+        onClick={handlePrev}
+        disabled={startIndex === 0}
+        className="p-1 rounded-full bg-white border shadow disabled:opacity-30"
+        aria-label="Sebelumnya"
+      >
+        <svg width="20" height="20" fill="none" viewBox="0 0 20 20"><path d="M13 15l-5-5 5-5" stroke="#2563eb" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/></svg>
+      </button>
+      <div className="flex gap-2 overflow-x-auto scrollbar-hide">
+        {visible.map((item) => (
+          <div key={item.label} className="min-w-[225px] max-w-[225px] bg-blue-50 rounded-lg p-4 shadow border flex flex-col items-center text-center">
+            <div className="text-sm font-semibold text-blue-700 mb-2 flex items-center gap-2 justify-center">
+              <CloudRain className="h-5 w-5 text-blue-600" /> {item.label}
+            </div>
+            {item.weather && item.main ? (
+              <>
+                <div className="text-2xl font-bold text-blue-700 flex items-center gap-2">
+                  {Math.round(item.main.temp)}°C
+                  <img src={`https://openweathermap.org/img/wn/${item.weather[0].icon}.png`} alt="icon" className="inline h-8 w-8" />
+                </div>
+                <div className="text-sm text-blue-800 capitalize mt-1">{item.weather[0].description}</div>
+                <div className="text-xs text-blue-600 mt-2">Kelembapan: {item.main.humidity}% | Angin: {item.wind.speed} m/s</div>
+              </>
+            ) : (
+              <div className="text-red-600 text-xs">{item.error || 'Gagal memuat data'}</div>
+            )}
+          </div>
+        ))}
+      </div>
+      <button
+        onClick={handleNext}
+        disabled={startIndex + perPage >= data.length}
+        className="p-1 rounded-full bg-white border shadow disabled:opacity-30"
+        aria-label="Selanjutnya"
+      >
+        <svg width="20" height="20" fill="none" viewBox="0 0 20 20"><path d="M7 5l5 5-5 5" stroke="#2563eb" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/></svg>
+      </button>
+    </div>
+  );
+
+  // expose cuacaAlerts ke parent
+  return { Carousel: carouselRender, cuacaAlerts };
+}
 
 export function GapoktanDashboard() {
   const [selectedPeriod, setSelectedPeriod] = useState('monthly');
@@ -41,6 +143,31 @@ export function GapoktanDashboard() {
   const now = new Date();
   const tanggal = now.toLocaleDateString('id-ID', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' });
   const jam = now.toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit' });
+
+  // Gunakan CuacaCarousel sebagai hook agar bisa ambil cuacaAlerts
+  const { Carousel: CuacaCarouselView, cuacaAlerts } = (CuacaCarousel as any)();
+  // Gabungkan weatherAlerts lokal dan cuacaAlerts dari API
+  const allWeatherAlerts = [
+    ...weatherAlerts,
+    ...(cuacaAlerts || [])
+  ];
+
+  const { user } = useAuth();
+  const [tugasTerbaru, setTugasTerbaru] = useState<any[]>([]);
+  const [laporanTerbaru, setLaporanTerbaru] = useState<any[]>([]);
+
+  useEffect(() => {
+    if (user && user.id) {
+      // Fetch tugas
+      fetch(`/api/tugas/gapoktan/${user.id}`)
+        .then(res => res.json())
+        .then(res => setTugasTerbaru(res.data?.slice(0, 4) || []));
+      // Fetch laporan
+      fetch(`/api/laporan/gapoktan/${user.id}`)
+        .then(res => res.json())
+        .then(res => setLaporanTerbaru(res.data?.slice(0, 4) || []));
+    }
+  }, [user]);
 
   return (
     <div className="max-w-7xl mx-auto p-6">
@@ -142,6 +269,9 @@ export function GapoktanDashboard() {
         </Card>
       </div>
 
+      {/* Cuaca Realtime Carousel */}
+      {CuacaCarouselView}
+
       {/* Peringatan Cuaca */}
       <Card className="harvest-card mb-8">
         <CardHeader>
@@ -152,23 +282,26 @@ export function GapoktanDashboard() {
         </CardHeader>
         <CardContent>
           <div className="space-y-3">
-            {weatherAlerts.map((alert) => (
-              <div key={alert.id} className="flex items-start gap-3 p-3 bg-earth-yellow-50 rounded-lg border border-earth-yellow-200">
-                <AlertTriangle className={`h-5 w-5 mt-0.5 ${
-                  alert.severity === 'high' ? 'text-red-500' : 
-                  alert.severity === 'medium' ? 'text-earth-yellow-600' : 'text-earth-green-600'
-                }`} />
+            {allWeatherAlerts.length === 0 && (
+              <div className="text-sm text-earth-brown-600">Tidak ada peringatan cuaca saat ini.</div>
+            )}
+            {allWeatherAlerts.map((alert, idx) => (
+              <div key={alert.event || alert.id || idx} className="flex items-start gap-3 p-3 bg-earth-yellow-50 rounded-lg border border-earth-yellow-200">
+                <AlertTriangle className={`h-5 w-5 mt-0.5 text-earth-yellow-600`} />
                 <div className="flex-1">
                   <div className="flex items-center gap-2 mb-1">
                     <Badge variant={alert.severity === 'high' ? 'destructive' : 'secondary'}>
-                      {alert.severity.toUpperCase()}
+                      {(alert.severity || alert.severity?.toUpperCase() || alert.event || 'ALERT').toString()}
                     </Badge>
-                    <span className="text-sm text-earth-brown-600">{alert.location}</span>
+                    <span className="text-sm text-earth-brown-600">{alert.location || alert.sender_name || '-'}</span>
                   </div>
-                  <p className="text-sm text-earth-brown-800">{alert.message}</p>
-                  <p className="text-xs text-earth-brown-600 mt-1">
-                    {alert.timestamp.toLocaleString('id-ID')}
-                  </p>
+                  <p className="text-sm text-earth-brown-800">{alert.description || alert.message}</p>
+                  {alert.start && (
+                    <p className="text-xs text-earth-brown-600 mt-1">
+                      {new Date(alert.start * 1000).toLocaleString('id-ID')}
+                      {alert.end ? ' - ' + new Date(alert.end * 1000).toLocaleString('id-ID') : ''}
+                    </p>
+                  )}
                 </div>
               </div>
             ))}
@@ -177,59 +310,32 @@ export function GapoktanDashboard() {
       </Card>
 
       {/* Section Bawah: Checklist, Agenda, Laporan */}
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
-        {/* Checklist */}
-        <Card className="harvest-card">
-          <CardHeader>
-            <CardTitle className="text-earth-brown-800 flex items-center gap-2">
-              <CheckCircle className="h-5 w-5 text-earth-green-600" />
-              Checklist Mingguan
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="space-y-3">
-              {checklistItems.map((item) => (
-                <div key={item.id} className="flex items-center gap-3">
-                  <input
-                    type="checkbox"
-                    checked={item.completed}
-                    readOnly
-                    className="h-4 w-4 text-earth-green-600 rounded border-earth-brown-300"
-                  />
-                  <div className="flex-1">
-                    <p className={`text-sm ${item.completed ? 'line-through text-earth-brown-500' : 'text-earth-brown-800'}`}>{item.task}</p>
-                    <p className="text-xs text-earth-brown-600">Due: {item.dueDate.toLocaleDateString('id-ID')}</p>
-                  </div>
-                  <Badge variant={item.priority === 'high' ? 'destructive' : item.priority === 'medium' ? 'secondary' : 'outline'}>{item.priority}</Badge>
-                </div>
-              ))}
-            </div>
-          </CardContent>
-        </Card>
-        {/* Agenda */}
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+        {/* Tugas Terdekat */}
         <Card className="harvest-card">
           <CardHeader>
             <CardTitle className="text-earth-brown-800 flex items-center gap-2">
               <Calendar className="h-5 w-5 text-earth-green-600" />
-              Agenda Terdekat
+              Tugas Terdekat
             </CardTitle>
           </CardHeader>
           <CardContent>
             <div className="space-y-3">
-              {agendaItems.slice(0, 4).map((item) => (
+              {tugasTerbaru.length === 0 && <div className="text-sm text-earth-brown-600">Tidak ada tugas.</div>}
+              {tugasTerbaru.map((item) => (
                 <div key={item.id} className="p-3 bg-earth-green-50 rounded-lg border border-earth-green-200">
-                  <h4 className="font-medium text-earth-brown-800">{item.title}</h4>
-                  <p className="text-sm text-earth-brown-600 mt-1">{item.description}</p>
+                  <h4 className="font-medium text-earth-brown-800">{item.judul}</h4>
+                  <p className="text-sm text-earth-brown-600 mt-1">{item.deskripsi}</p>
                   <div className="flex items-center justify-between mt-2">
-                    <span className="text-xs text-earth-brown-600">{item.date.toLocaleDateString('id-ID')}</span>
-                    <Badge variant="outline">{item.type}</Badge>
+                    <span className="text-xs text-earth-brown-600">{item.mulai ? new Date(item.mulai).toLocaleDateString('id-ID') : '-'}</span>
+                    <Badge variant="outline">{item.prioritas}</Badge>
                   </div>
                 </div>
               ))}
             </div>
           </CardContent>
         </Card>
-        {/* Reports Inbox */}
+        {/* Laporan Terbaru */}
         <Card className="harvest-card">
           <CardHeader>
             <CardTitle className="text-earth-brown-800 flex items-center gap-2">
@@ -239,14 +345,14 @@ export function GapoktanDashboard() {
           </CardHeader>
           <CardContent>
             <div className="space-y-3">
-              {reports.slice(0, 4).map((report) => (
+              {laporanTerbaru.length === 0 && <div className="text-sm text-earth-brown-600">Tidak ada laporan.</div>}
+              {laporanTerbaru.map((report) => (
                 <div key={report.id} className="p-3 bg-earth-brown-50 rounded-lg border border-earth-brown-200">
-                  <h4 className="font-medium text-earth-brown-800">{report.title}</h4>
-                  <p className="text-sm text-earth-brown-600 mt-1">{report.location}</p>
-                  <div className="flex items-center justify-between mt-2">
-                    <span className="text-xs text-earth-brown-600">{report.createdAt.toLocaleDateString('id-ID')}</span>
-                    <Badge variant={report.status === 'submitted' ? 'default' : report.status === 'reviewed' ? 'secondary' : 'outline'}>{report.status}</Badge>
+                  <div className="flex items-center justify-between">
+                    <h4 className="font-medium text-earth-brown-800">{report.judul_laporan}</h4>
+                    <Badge>{report.status_laporan}</Badge>
                   </div>
+                  <span className="text-xs text-earth-brown-600">{report.tanggal_laporan ? new Date(report.tanggal_laporan).toLocaleDateString('id-ID') : (report.created_at ? new Date(report.created_at).toLocaleDateString('id-ID') : '-')}</span>
                 </div>
               ))}
             </div>

@@ -6,6 +6,9 @@ import cors from 'cors';
 import tugasRouter from './routes/tugas';
 import gapoktanRouter from './routes/gapoktan';
 import laporanRouter from './routes/laporan';
+import cuacaRouter from './routes/cuaca';
+import lahanRouter from './routes/lahan';
+import reverseGeocodeRouter from './routes/reverseGeocode';
 
 dotenv.config();
 
@@ -19,13 +22,16 @@ app.use('/api/auth', authRouter);
 app.use('/api/tugas', tugasRouter);
 app.use('/api/gapoktan', gapoktanRouter);
 app.use('/api/laporan', laporanRouter);
+app.use('/api/lahan', lahanRouter);
+app.use('/api/reverse-geocode', reverseGeocodeRouter);
+app.use('/api', cuacaRouter);
 
 async function testSupabaseConnection() {
   const { data, error } = await supabase.from('profiles').select('*').limit(1);
   if (error) {
     console.error('Koneksi ke Supabase GAGAL:', error.message);
   } else {
-    console.log('Koneksi ke Supabase BERHASIL! Contoh data: Hello Big D', data);
+    console.log('Koneksi ke Supabase BERHASIL! Hello Big F 🧑‍💻');
   }
 }
 

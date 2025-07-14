@@ -27,11 +27,13 @@ router.get('/', async (req, res) => {
 
 // GET /laporan/gapoktan/:id
 router.get('/gapoktan/:id', async (req, res) => {
+  console.log('GET /laporan/gapoktan/:id', req.params.id); // log id yang diterima
   try {
     const data = await getLaporanByGapoktan(req.params.id);
     res.json({ success: true, data });
   } catch (err) {
     const errorMsg = err instanceof Error ? err.message : String(err);
+    console.error('Error getLaporanByGapoktan:', errorMsg); // log error detail
     res.status(400).json({ success: false, error: errorMsg });
   }
 });

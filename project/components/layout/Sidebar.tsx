@@ -35,7 +35,7 @@ const sidebarItems: SidebarItem[] = [
   { id: 'agenda', label: 'Agenda', icon: Calendar, href: '/gapoktan/agenda', roles: ['gapoktan'] },
   { id: 'laporan', label: 'Laporan', icon: FileText, href: '/gapoktan/laporan', roles: ['gapoktan'] },
   { id: 'mari', label: 'MARI (AI Chatbot)', icon: Users, href: '/gapoktan/mari', roles: ['gapoktan'] },
-  { id: 'lahan', label: 'Lahan', icon: Users, href: '/gapoktan/lahan', roles: ['gapoktan'] },
+  { id: 'lahan', label: 'Lahan', icon: Map, href: '/gapoktan/lahan', roles: ['gapoktan'] },
   { id: 'pengaturan-akun', label: 'Pengaturan Akun', icon: Settings, href: '/gapoktan/pengaturan-akun', roles: ['gapoktan'] },
 
   // Penyuluh

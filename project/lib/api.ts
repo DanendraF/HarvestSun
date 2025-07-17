@@ -122,3 +122,20 @@ export async function updateLaporan(id: string, update: any) {
   if (!res.ok) throw new Error((await res.json()).error || 'Gagal update laporan');
   return res.json();
 } 
+
+// PANEN
+export async function createPanen(data: any) {
+  const res = await fetch(`${BASE_URL}/panen`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(data),
+  });
+  if (!res.ok) throw new Error((await res.json()).error || 'Gagal tambah panen');
+  return res.json();
+}
+
+export async function getPanenByGapoktan(gapoktan_id: string) {
+  const res = await fetch(`${BASE_URL}/panen/gapoktan/${gapoktan_id}`);
+  if (!res.ok) throw new Error((await res.json()).error || 'Gagal ambil data panen');
+  return res.json();
+} 

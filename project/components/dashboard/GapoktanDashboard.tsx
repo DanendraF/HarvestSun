@@ -32,6 +32,8 @@ import {
 import { harvestData, weatherAlerts, productivityData, harvestTrendData, checklistItems, agendaItems, reports } from '@/data/sampleData';
 import { useRef } from 'react';
 import { useAuth } from '@/hooks/useAuth';
+import * as api from '@/lib/api';
+import { getPanenByGapoktan } from '@/lib/api';
 
 const WILAYAH_JOGJA = [
   { label: 'Yogyakarta', query: 'Yogyakarta' },
@@ -134,11 +136,77 @@ function CuacaCarousel() {
 }
 
 export function GapoktanDashboard() {
-  const [selectedPeriod, setSelectedPeriod] = useState('monthly');
-  const totalHarvest = harvestData.reduce((acc, item) => acc + item.quantity, 0);
-  const completedTasks = checklistItems.filter(item => item.completed).length;
-  const totalTasks = checklistItems.length;
-  const taskProgress = (completedTasks / totalTasks) * 100;
+  const { user } = useAuth();
+  // State untuk summary card
+  const [stat, setStat] = useState({
+    totalHarvest: 0,
+    checklistTotal: 0,
+    checklistDone: 0,
+    lahanTotal: 0,
+    lahanSiapPanen: 0,
+    loading: true,
+  });
+  // State untuk grafik
+  const [productivity, setProductivity] = useState<any[]>([]);
+  const [harvestTrend, setHarvestTrend] = useState<any[]>([]);
+  const [loadingChart, setLoadingChart] = useState(true);
+
+  useEffect(() => {
+    if (!user || !user.id) return;
+    setStat(s => ({ ...s, loading: true }));
+    // Fetch lahan
+    fetch(`/api/lahan?gapoktan_id=${user.id}`)
+      .then(res => res.json())
+      .then(res => {
+        const lahan = res.data || [];
+        setStat(s => ({ ...s, lahanTotal: lahan.length, lahanSiapPanen: lahan.filter((l: any) => l.status === 'Siap Panen').length }));
+      });
+    // Fetch checklist/tugas
+    api.getTugasByGapoktan(user.id).then(res => {
+      const tugas = res.data || [];
+      setStat(s => ({ ...s, checklistTotal: tugas.length, checklistDone: tugas.filter((t: any) => t.status === 'Selesai').length }));
+    });
+    // Fetch panen untuk grafik dan total panen bulan ini
+    setLoadingChart(true);
+    getPanenByGapoktan(user.id).then(res => {
+      const panen = res.data || [];
+      // Hitung total panen bulan ini
+      const now = new Date();
+      const currentMonth = now.getMonth();
+      const currentYear = now.getFullYear();
+      const totalHarvestThisMonth = panen
+        .filter((p: any) => {
+          const panenDate = new Date(p.tanggal);
+          return panenDate.getMonth() === currentMonth && panenDate.getFullYear() === currentYear;
+        })
+        .reduce((acc: number, p: any) => acc + Number(p.jumlah), 0);
+      setStat(s => ({ ...s, totalHarvest: totalHarvestThisMonth, loading: false }));
+      // Produktivitas Mingguan
+      const weekMap: any = {};
+      panen.forEach((p: any) => {
+        const week = getWeekNumber(new Date(p.tanggal));
+        if (!weekMap[week]) weekMap[week] = { week: `Minggu ${week}`, padi: 0, jagung: 0, kedelai: 0, cabai: 0, tomat: 0 };
+        const key = (p.komoditas || '').toLowerCase();
+        if (weekMap[week][key] !== undefined) weekMap[week][key] += Number(p.jumlah);
+      });
+      setProductivity(Object.values(weekMap));
+      // Tren Panen Bulanan
+      const monthMap: any = {};
+      panen.forEach((p: any) => {
+        const month = new Date(p.tanggal).toLocaleString('id-ID', { month: 'short', year: 'numeric' });
+        if (!monthMap[month]) monthMap[month] = { month, harvest: 0 };
+        monthMap[month].harvest += Number(p.jumlah);
+      });
+      setHarvestTrend(Object.values(monthMap));
+      setLoadingChart(false);
+    });
+  }, [user]);
+
+  // Ganti variabel lama dengan stat dari backend
+  const totalHarvest = stat.totalHarvest;
+  const completedTasks = stat.checklistDone;
+  const totalTasks = stat.checklistTotal;
+  const taskProgress = totalTasks > 0 ? (completedTasks / totalTasks) * 100 : 0;
   const COLORS = ['#22c55e', '#eab308', '#f97316', '#ef4444'];
   const now = new Date();
   const tanggal = now.toLocaleDateString('id-ID', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' });
@@ -152,7 +220,6 @@ export function GapoktanDashboard() {
     ...(cuacaAlerts || [])
   ];
 
-  const { user } = useAuth();
   const [tugasTerbaru, setTugasTerbaru] = useState<any[]>([]);
   const [laporanTerbaru, setLaporanTerbaru] = useState<any[]>([]);
 
@@ -178,7 +245,6 @@ export function GapoktanDashboard() {
           <p className="text-earth-brown-600">{tanggal} | {jam}</p>
         </div>
       </div>
-
       {/* Summary Cards */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
         <Card className="harvest-card">
@@ -187,9 +253,10 @@ export function GapoktanDashboard() {
             <Wheat className="h-4 w-4 text-earth-green-600" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold text-earth-green-700">{totalHarvest.toLocaleString()} kg</div>
+            <div className="text-2xl font-bold text-earth-green-700">{stat.loading ? '...' : totalHarvest.toLocaleString()} kg</div>
             <p className="text-xs text-earth-brown-600">
               <TrendingUp className="h-3 w-3 inline mr-1" />
+              {/* TODO: Hitung persentase kenaikan jika data bulan lalu tersedia */}
               +12% dari bulan lalu
             </p>
           </CardContent>
@@ -212,10 +279,10 @@ export function GapoktanDashboard() {
             <CheckCircle className="h-4 w-4 text-earth-green-600" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold text-earth-green-700">{Math.round(taskProgress)}%</div>
+            <div className="text-2xl font-bold text-earth-green-700">{stat.loading ? '...' : Math.round(taskProgress)}%</div>
             <Progress value={taskProgress} className="mt-2" />
             <p className="text-xs text-earth-brown-600 mt-1">
-              {completedTasks} dari {totalTasks} tugas selesai
+              {stat.loading ? '...' : `${completedTasks} dari ${totalTasks} tugas selesai`}
             </p>
           </CardContent>
         </Card>
@@ -225,12 +292,11 @@ export function GapoktanDashboard() {
             <MapPin className="h-4 w-4 text-earth-green-600" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold text-earth-green-700">3</div>
-            <p className="text-xs text-earth-brown-600">2 siap panen</p>
+            <div className="text-2xl font-bold text-earth-green-700">{stat.loading ? '...' : stat.lahanTotal}</div>
+            <p className="text-xs text-earth-brown-600">{stat.loading ? '...' : `${stat.lahanSiapPanen} siap panen`}</p>
           </CardContent>
         </Card>
       </div>
-
       {/* Grafik dan Tren Panen */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 mb-8">
         <Card className="harvest-card">
@@ -239,16 +305,19 @@ export function GapoktanDashboard() {
           </CardHeader>
           <CardContent>
             <ResponsiveContainer width="100%" height={300}>
-              <BarChart data={productivityData}>
+              <BarChart data={productivity}>
                 <CartesianGrid strokeDasharray="3 3" />
                 <XAxis dataKey="week" />
                 <YAxis />
                 <Tooltip />
                 <Bar dataKey="padi" fill="#22c55e" />
                 <Bar dataKey="jagung" fill="#eab308" />
+                <Bar dataKey="kedelai" fill="#8b5cf6" />
+                <Bar dataKey="cabai" fill="#ef4444" />
                 <Bar dataKey="tomat" fill="#f97316" />
               </BarChart>
             </ResponsiveContainer>
+            {loadingChart && <div className="text-xs text-gray-500 mt-2">Memuat grafik...</div>}
           </CardContent>
         </Card>
         <Card className="harvest-card">
@@ -257,7 +326,7 @@ export function GapoktanDashboard() {
           </CardHeader>
           <CardContent>
             <ResponsiveContainer width="100%" height={300}>
-              <LineChart data={harvestTrendData}>
+              <LineChart data={harvestTrend}>
                 <CartesianGrid strokeDasharray="3 3" />
                 <XAxis dataKey="month" />
                 <YAxis />
@@ -265,6 +334,7 @@ export function GapoktanDashboard() {
                 <Line type="monotone" dataKey="harvest" stroke="#22c55e" strokeWidth={3} />
               </LineChart>
             </ResponsiveContainer>
+            {loadingChart && <div className="text-xs text-gray-500 mt-2">Memuat grafik...</div>}
           </CardContent>
         </Card>
       </div>
@@ -361,4 +431,10 @@ export function GapoktanDashboard() {
       </div>
     </div>
   );
+}
+
+function getWeekNumber(date: Date) {
+  const firstDay = new Date(date.getFullYear(), 0, 1);
+  const pastDaysOfYear = (date.getTime() - firstDay.getTime()) / 86400000;
+  return Math.ceil((pastDaysOfYear + firstDay.getDay() + 1) / 7);
 }

@@ -8,6 +8,8 @@ import gapoktanRouter from './routes/gapoktan';
 import laporanRouter from './routes/laporan';
 import cuacaRouter from './routes/cuaca';
 import lahanRouter from './routes/lahan';
+import panenRouter from './routes/panen';
+
 import reverseGeocodeRouter from './routes/reverseGeocode';
 
 dotenv.config();
@@ -25,6 +27,7 @@ app.use('/api/laporan', laporanRouter);
 app.use('/api/lahan', lahanRouter);
 app.use('/api/reverse-geocode', reverseGeocodeRouter);
 app.use('/api', cuacaRouter);
+app.use('/api/panen', panenRouter);
 
 async function testSupabaseConnection() {
   const { data, error } = await supabase.from('profiles').select('*').limit(1);

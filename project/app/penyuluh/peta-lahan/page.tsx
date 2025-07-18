@@ -8,14 +8,44 @@ import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Map, MapPin, Plus, Layers, Satellite, Navigation } from 'lucide-react';
-import { fields } from '@/data/sampleData';
+import * as api from '@/lib/api';
 import { useAuth } from '@/hooks/useAuth';
+import dynamic from "next/dynamic";
+const MapContainer = dynamic(() => import("react-leaflet").then(mod => mod.MapContainer), { ssr: false });
+const TileLayer = dynamic(() => import("react-leaflet").then(mod => mod.TileLayer), { ssr: false });
+const Marker = dynamic(() => import("react-leaflet").then(mod => mod.Marker), { ssr: false });
+const Popup = dynamic(() => import("react-leaflet").then(mod => mod.Popup), { ssr: false });
+import "leaflet/dist/leaflet.css";
 
 export default function PetaLahanPage() {
   const { user, loading } = useAuth();
   const router = useRouter();
   const [selectedField, setSelectedField] = useState<string | null>(null);
   const [mapView, setMapView] = useState<'satellite' | 'street' | 'terrain'>('satellite');
+  const [fields, setFields] = useState<any[]>([]);
+  const [gapoktanList, setGapoktanList] = useState<any[]>([]);
+
+  useEffect(() => {
+    if (!user) return;
+    // 1. Fetch gapoktan binaan
+    api.getProfile(user.id).then(res => {
+      const wilayah = res?.profile?.wilayah || '';
+      fetch(`/api/gapoktan?wilayah=${encodeURIComponent(wilayah)}`)
+        .then(res => res.json())
+        .then(async res => {
+          const gapoktanList = res.data || [];
+          setGapoktanList(gapoktanList);
+          // Fetch lahan untuk setiap gapoktan binaan
+          const lahanPromises = gapoktanList.map((g: any) =>
+            fetch(`/api/lahan?gapoktan_id=${g.id}`).then(res => res.json())
+          );
+          const lahanResults = await Promise.all(lahanPromises);
+          // Gabungkan semua lahan
+          const allLahan = lahanResults.flatMap(r => r.data || []);
+          setFields(allLahan);
+        });
+    });
+  }, [user]);
 
   useEffect(() => {
     if (!loading) {
@@ -40,8 +70,8 @@ export default function PetaLahanPage() {
     }
   };
 
-  const totalArea = fields.reduce((acc, field) => acc + field.area, 0);
-  const activeFields = fields.filter(field => field.status === 'active').length;
+  const totalArea = fields.reduce((acc, field) => acc + (field.area || field.luas || 0), 0);
+  const activeFields = fields.filter(field => field.status === 'active' || field.status === 'Aktif').length;
 
   return (
     <DashboardLayout>
@@ -146,41 +176,26 @@ export default function PetaLahanPage() {
               </div>
             </CardHeader>
             <CardContent>
-              <div className="h-96 bg-earth-green-100 rounded-lg flex items-center justify-center relative overflow-hidden">
-                {/* Simulated Map */}
-                <div className="absolute inset-0 bg-gradient-to-br from-earth-green-200 to-earth-green-300">
-                  <div className="absolute top-1/4 left-1/4 w-16 h-12 bg-earth-green-600 rounded opacity-80"></div>
-                  <div className="absolute top-1/2 right-1/3 w-20 h-16 bg-earth-yellow-600 rounded opacity-80"></div>
-                  <div className="absolute bottom-1/3 left-1/2 w-12 h-10 bg-earth-green-700 rounded opacity-80"></div>
-                  
-                  {/* Field markers */}
-                  {fields.map((field, index) => (
-                    <div
-                      key={field.id}
-                      className={`absolute w-4 h-4 rounded-full cursor-pointer transition-all ${
-                        selectedField === field.id ? 'ring-2 ring-white' : ''
-                      } ${
-                        field.status === 'active' ? 'bg-green-500' :
-                        field.status === 'harvested' ? 'bg-yellow-500' : 'bg-blue-500'
-                      }`}
-                      style={{
-                        top: `${20 + (index * 20)}%`,
-                        left: `${30 + (index * 15)}%`
-                      }}
-                      onClick={() => setSelectedField(field.id)}
-                    />
+              <div className="h-96 w-full rounded-lg overflow-hidden">
+                <MapContainer
+                  center={fields.length > 0 && fields[0].latitude && fields[0].longitude ? [fields[0].latitude, fields[0].longitude] : [-7.8, 110.36]}
+                  zoom={12}
+                  style={{ height: "100%", width: "100%" }}
+                >
+                  <TileLayer url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png" />
+                  {fields.filter(f => f.latitude && f.longitude).map(field => (
+                    <Marker key={field.id} position={[field.latitude, field.longitude]} eventHandlers={{ click: () => setSelectedField(field.id) }}>
+                      <Popup>
+                        <div>
+                          <div className="font-semibold">{field.nama || field.name}</div>
+                          <div className="text-xs">{field.lokasi}</div>
+                          <div className="text-xs">Luas: {field.luas || field.area} Ha</div>
+                          <div className="text-xs">Komoditas: {field.komoditas || field.crop}</div>
+                        </div>
+                      </Popup>
+                    </Marker>
                   ))}
-                </div>
-                
-                <div className="text-center z-10">
-                  <Map className="h-12 w-12 text-earth-green-600 mx-auto mb-2" />
-                  <p className="text-earth-brown-600">
-                    Peta interaktif dengan data real-time
-                  </p>
-                  <p className="text-sm text-earth-brown-500 mt-1">
-                    Klik marker untuk detail lahan
-                  </p>
-                </div>
+                </MapContainer>
               </div>
             </CardContent>
           </Card>

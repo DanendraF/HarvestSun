@@ -139,3 +139,9 @@ export async function getPanenByGapoktan(gapoktan_id: string) {
   if (!res.ok) throw new Error((await res.json()).error || 'Gagal ambil data panen');
   return res.json();
 } 
+
+export async function getPanen() {
+  const res = await fetch(`${BASE_URL}/panen`);
+  if (!res.ok) throw new Error((await res.json()).error || 'Gagal ambil data panen');
+  return res.json();
+} 

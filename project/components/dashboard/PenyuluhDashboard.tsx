@@ -14,40 +14,91 @@ import {
   LineChart,
   Line
 } from 'recharts';
-
-const summaryStats = [
-  { icon: <Users className="h-6 w-6 text-blue-600" />, title: 'Total Gapoktan', value: '8 Gapoktan binaan' },
-  { icon: <CheckCircle className="h-6 w-6 text-green-600" />, title: 'Tugas Selesai', value: '24 dari 30 tugas' },
-  { icon: <FileText className="h-6 w-6 text-purple-600" />, title: 'Laporan Masuk', value: '12 minggu ini' },
-  { icon: <Leaf className="h-6 w-6 text-yellow-600" />, title: 'Total Panen', value: '3.800 kg bulan ini' },
-];
-
-const productivityData = [
-  { week: 'Minggu 1', padi: 800, jagung: 400, tomat: 200 },
-  { week: 'Minggu 2', padi: 1200, jagung: 600, tomat: 300 },
-  { week: 'Minggu 3', padi: 900, jagung: 500, tomat: 250 },
-  { week: 'Minggu 4', padi: 1100, jagung: 700, tomat: 350 },
-];
-
-const harvestTrendData = [
-  { month: 'Sep', harvest: 9000 },
-  { month: 'Oct', harvest: 9500 },
-  { month: 'Nov', harvest: 9800 },
-  { month: 'Dec', harvest: 10200 },
-  { month: 'Jan', harvest: 10500 },
-];
-
-const tugasTerbaru = [
-  { gapoktan: 'Tani Jaya', tugas: 'Pendataan Lahan', deadline: '12 Jul 2025', status: 'Proses' },
-  { gapoktan: 'Maju Mapan', tugas: 'Monitoring Jagung', deadline: '10 Jul 2025', status: 'Belum' },
-];
-
-const laporanTerbaru = [
-  { gapoktan: 'Tani Jaya', judul: 'Hasil Panen Padi', tanggal: '09 Jul 2025' },
-  { gapoktan: 'Subur Makmur', judul: 'Kendala Hama', tanggal: '08 Jul 2025' },
-];
+import { useAuth } from '@/hooks/useAuth';
+import * as api from '@/lib/api';
+import { useEffect, useState } from 'react';
 
 export function PenyuluhDashboard() {
+  const { user } = useAuth();
+  const [stat, setStat] = useState({
+    totalGapoktan: 0,
+    tugasSelesai: 0,
+    totalTugas: 0,
+    laporanMasuk: 0,
+    totalPanen: 0,
+    loading: true,
+  });
+  const [productivity, setProductivity] = useState<any[]>([]);
+  const [harvestTrend, setHarvestTrend] = useState<any[]>([]);
+  const [tugasTerbaru, setTugasTerbaru] = useState<any[]>([]);
+  const [laporanTerbaru, setLaporanTerbaru] = useState<any[]>([]);
+  const [loadingChart, setLoadingChart] = useState(true);
+  const [gapoktanPanen, setGapoktanPanen] = useState<any[]>([]);
+
+  useEffect(() => {
+    if (!user || !user.id) return;
+    setStat(s => ({ ...s, loading: true }));
+    // Fetch gapoktan binaan
+    api.getProfile(user.id).then(res => {
+      // Asumsi user punya field wilayah
+      const wilayah = res?.profile?.wilayah || '';
+      fetch(`/api/gapoktan?wilayah=${encodeURIComponent(wilayah)}`)
+        .then(res => res.json())
+        .then(res => {
+          const gapoktanList = res.data || [];
+          setStat(s => ({ ...s, totalGapoktan: gapoktanList.length }));
+          const gapoktanIds = gapoktanList.map((g: any) => g.id);
+          // Fetch panen untuk statistik dan grafik
+          setLoadingChart(true);
+          api.getPanen().then(res => {
+            // Filter panen hanya untuk gapoktan binaan
+            const panen = (res.data || []).filter((p: any) => gapoktanIds.includes(p.gapoktan_id));
+            // Total panen bulan ini
+            const now = new Date();
+            const currentMonth = now.getMonth();
+            const currentYear = now.getFullYear();
+            const totalPanenBulanIni = panen
+              .filter((p: any) => {
+                const panenDate = new Date(p.tanggal);
+                return panenDate.getMonth() === currentMonth && panenDate.getFullYear() === currentYear;
+              })
+              .reduce((acc: number, p: any) => acc + Number(p.jumlah), 0);
+            setStat(s => ({ ...s, totalPanen: totalPanenBulanIni, loading: false }));
+            // Produktivitas Mingguan
+            const weekMap: any = {};
+            panen.forEach((p: any) => {
+              const week = getWeekNumber(new Date(p.tanggal));
+              if (!weekMap[week]) weekMap[week] = { week: `Minggu ${week}`, padi: 0, jagung: 0, kedelai: 0, cabai: 0, tomat: 0 };
+              const key = (p.komoditas || '').toLowerCase();
+              if (weekMap[week][key] !== undefined) weekMap[week][key] += Number(p.jumlah);
+            });
+            setProductivity(Object.values(weekMap));
+            // Tren Panen Bulanan
+            const monthMap: any = {};
+            panen.forEach((p: any) => {
+              const month = new Date(p.tanggal).toLocaleString('id-ID', { month: 'short', year: 'numeric' });
+              if (!monthMap[month]) monthMap[month] = { month, harvest: 0 };
+              monthMap[month].harvest += Number(p.jumlah);
+            });
+            setHarvestTrend(Object.values(monthMap));
+            setLoadingChart(false);
+          });
+        });
+    });
+    // Fetch tugas penyuluh
+    api.getTugasByPenyuluh(user.id).then(res => {
+      const tugas = res.data || [];
+      setStat(s => ({ ...s, totalTugas: tugas.length, tugasSelesai: tugas.filter((t: any) => t.status === 'Selesai').length }));
+      setTugasTerbaru(tugas.slice(0, 4));
+    });
+    // Fetch laporan
+    api.getLaporan().then(res => {
+      const laporan = (res.data || []).filter((l: any) => l.penyuluh_id === user.id);
+      setStat(s => ({ ...s, laporanMasuk: laporan.length }));
+      setLaporanTerbaru(laporan.slice(0, 4));
+    });
+  }, [user]);
+
   const now = new Date();
   const tanggal = now.toLocaleDateString('id-ID', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' });
   const jam = now.toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit' });
@@ -60,18 +111,30 @@ export function PenyuluhDashboard() {
           <h1 className="text-2xl font-bold mb-1">Selamat datang, Penyuluh</h1>
           <p className="text-earth-brown-600">{tanggal} | {jam}</p>
         </div>
-        {/* Hapus tombol profil dan logout di kanan atas */}
       </div>
 
       {/* Card Ringkasan Statistik */}
       <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-8">
-        {summaryStats.map((stat, i) => (
-          <Card key={i} className="flex flex-col items-center justify-center py-6">
-            <div>{stat.icon}</div>
-            <div className="text-lg font-semibold mt-2">{stat.title}</div>
-            <div className="text-2xl font-bold mt-1">{stat.value}</div>
+        <Card className="flex flex-col items-center justify-center py-6">
+          <div><Users className="h-6 w-6 text-blue-600" /></div>
+          <div className="text-lg font-semibold mt-2">Total Gapoktan</div>
+          <div className="text-2xl font-bold mt-1">{stat.loading ? '...' : stat.totalGapoktan}</div>
         </Card>
-        ))}
+        <Card className="flex flex-col items-center justify-center py-6">
+          <div><CheckCircle className="h-6 w-6 text-green-600" /></div>
+          <div className="text-lg font-semibold mt-2">Tugas Selesai</div>
+          <div className="text-2xl font-bold mt-1">{stat.loading ? '...' : `${stat.tugasSelesai} dari ${stat.totalTugas} tugas`}</div>
+        </Card>
+        <Card className="flex flex-col items-center justify-center py-6">
+          <div><FileText className="h-6 w-6 text-purple-600" /></div>
+          <div className="text-lg font-semibold mt-2">Laporan Masuk</div>
+          <div className="text-2xl font-bold mt-1">{stat.loading ? '...' : stat.laporanMasuk}</div>
+        </Card>
+        <Card className="flex flex-col items-center justify-center py-6">
+          <div><Leaf className="h-6 w-6 text-yellow-600" /></div>
+          <div className="text-lg font-semibold mt-2">Total Panen</div>
+          <div className="text-2xl font-bold mt-1">{stat.loading ? '...' : `${stat.totalPanen} kg bulan ini`}</div>
+        </Card>
       </div>
 
       {/* Grafik dan Tren Panen */}
@@ -82,16 +145,19 @@ export function PenyuluhDashboard() {
           </CardHeader>
           <CardContent>
             <ResponsiveContainer width="100%" height={300}>
-              <BarChart data={productivityData}>
+              <BarChart data={productivity}>
                 <CartesianGrid strokeDasharray="3 3" />
                 <XAxis dataKey="week" />
                 <YAxis />
                 <Tooltip />
                 <Bar dataKey="padi" fill="#22c55e" />
                 <Bar dataKey="jagung" fill="#eab308" />
+                <Bar dataKey="kedelai" fill="#8b5cf6" />
+                <Bar dataKey="cabai" fill="#ef4444" />
                 <Bar dataKey="tomat" fill="#f97316" />
               </BarChart>
             </ResponsiveContainer>
+            {loadingChart && <div className="text-xs text-gray-500 mt-2">Memuat grafik...</div>}
           </CardContent>
         </Card>
         <Card className="harvest-card">
@@ -100,7 +166,7 @@ export function PenyuluhDashboard() {
           </CardHeader>
           <CardContent>
             <ResponsiveContainer width="100%" height={300}>
-              <LineChart data={harvestTrendData}>
+              <LineChart data={harvestTrend}>
                 <CartesianGrid strokeDasharray="3 3" />
                 <XAxis dataKey="month" />
                 <YAxis />
@@ -108,9 +174,39 @@ export function PenyuluhDashboard() {
                 <Line type="monotone" dataKey="harvest" stroke="#22c55e" strokeWidth={3} />
               </LineChart>
             </ResponsiveContainer>
+            {loadingChart && <div className="text-xs text-gray-500 mt-2">Memuat grafik...</div>}
           </CardContent>
         </Card>
       </div>
+
+      {/* Data Panen per Gapoktan (Bulan Ini) */}
+      <Card className="harvest-card mb-8">
+        <CardHeader>
+          <CardTitle className="text-earth-brown-800 flex items-center gap-2">
+            Data Panen per Gapoktan (Bulan Ini)
+          </CardTitle>
+        </CardHeader>
+        <CardContent>
+          <div className="overflow-x-auto">
+            <table className="min-w-full text-sm">
+              <thead>
+                <tr>
+                  <th className="px-4 py-2 text-left">Gapoktan</th>
+                  <th className="px-4 py-2 text-left">Total Panen (kg)</th>
+                </tr>
+              </thead>
+              <tbody>
+                {gapoktanPanen.map((g: any) => (
+                  <tr key={g.nama}>
+                    <td className="px-4 py-2">{g.nama}</td>
+                    <td className="px-4 py-2">{g.totalPanen}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </CardContent>
+      </Card>
 
       {/* Tugas Terbaru ke Gapoktan */}
       <Card className="harvest-card mb-8">
@@ -122,12 +218,13 @@ export function PenyuluhDashboard() {
         </CardHeader>
         <CardContent>
           <div className="space-y-3">
-            {tugasTerbaru.slice(0, 4).map((t, i) => (
+            {tugasTerbaru.length === 0 && <div className="text-sm text-earth-brown-600">Tidak ada tugas.</div>}
+            {tugasTerbaru.slice(0, 4).map((t: any, i: number) => (
               <div key={i} className="p-3 bg-earth-green-50 rounded-lg border border-earth-green-200">
-                <h4 className="font-medium text-earth-brown-800">{t.tugas}</h4>
-                <p className="text-sm text-earth-brown-600 mt-1">{t.gapoktan}</p>
+                <h4 className="font-medium text-earth-brown-800">{t.judul || t.tugas}</h4>
+                <p className="text-sm text-earth-brown-600 mt-1">{t.gapoktan || t.gapoktan_nama}</p>
                 <div className="flex items-center justify-between mt-2">
-                  <span className="text-xs text-earth-brown-600">{t.deadline}</span>
+                  <span className="text-xs text-earth-brown-600">{t.deadline || (t.mulai ? new Date(t.mulai).toLocaleDateString('id-ID') : '-')}</span>
                   <span className={`text-xs font-semibold px-2 py-1 rounded-full ${
                     t.status === 'Proses' ? 'bg-yellow-100 text-yellow-700' :
                     t.status === 'Belum' ? 'bg-gray-100 text-gray-700' :
@@ -149,32 +246,25 @@ export function PenyuluhDashboard() {
           </CardHeader>
           <CardContent>
           <div className="space-y-3">
-            {laporanTerbaru.slice(0, 4).map((l, i) => (
+            {laporanTerbaru.length === 0 && <div className="text-sm text-earth-brown-600">Tidak ada laporan.</div>}
+            {laporanTerbaru.slice(0, 4).map((l: any, i: number) => (
               <div key={i} className="p-3 bg-earth-brown-50 rounded-lg border border-earth-brown-200">
-                <h4 className="font-medium text-earth-brown-800">{l.judul}</h4>
-                <p className="text-sm text-earth-brown-600 mt-1">{l.gapoktan}</p>
+                <h4 className="font-medium text-earth-brown-800">{l.judul_laporan || l.judul}</h4>
+                <p className="text-sm text-earth-brown-600 mt-1">{l.gapoktan_nama || l.gapoktan}</p>
                 <div className="flex items-center justify-between mt-2">
-                  <span className="text-xs text-earth-brown-600">{l.tanggal}</span>
-                  {/* Bisa tambahkan badge status jika ada */}
-                  </div>
+                  <span className="text-xs text-earth-brown-600">{l.tanggal_laporan ? new Date(l.tanggal_laporan).toLocaleDateString('id-ID') : (l.tanggal ? new Date(l.tanggal).toLocaleDateString('id-ID') : '-')}</span>
                 </div>
-              ))}
-            </div>
-          </CardContent>
-        </Card>
-
-      {/* Mini Map Wilayah Gapoktan (opsional) */}
-      <Card>
-          <CardHeader>
-          <CardTitle>Peta Wilayah Gapoktan</CardTitle>
-          </CardHeader>
-          <CardContent>
-          <div className="h-64 w-full bg-green-100 rounded-lg flex items-center justify-center">
-            <MapPin className="h-12 w-12 text-green-600" />
-            <span className="ml-2 text-earth-brown-600">Mini map dummy (bisa integrasi peta interaktif)</span>
-            </div>
+              </div>
+            ))}
+          </div>
           </CardContent>
         </Card>
     </div>
   );
+}
+
+function getWeekNumber(date: Date) {
+  const firstDay = new Date(date.getFullYear(), 0, 1);
+  const pastDaysOfYear = (date.getTime() - firstDay.getTime()) / 86400000;
+  return Math.ceil((pastDaysOfYear + firstDay.getDay() + 1) / 7);
 }

@@ -29,6 +29,7 @@ import {
   Calendar,
   FileText
 } from 'lucide-react';
+import Image from 'next/image';
 import { harvestData, weatherAlerts, productivityData, harvestTrendData, checklistItems, agendaItems, reports } from '@/data/sampleData';
 import { useRef } from 'react';
 import { useAuth } from '@/hooks/useAuth';
@@ -109,7 +110,7 @@ function CuacaCarousel() {
               <>
                 <div className="text-2xl font-bold text-blue-700 flex items-center gap-2">
                   {Math.round(item.main.temp)}°C
-                  <img src={`https://openweathermap.org/img/wn/${item.weather[0].icon}.png`} alt="icon" className="inline h-8 w-8" />
+                  <Image src={`https://openweathermap.org/img/wn/${item.weather[0].icon}.png`} alt="icon" width={32} height={32} className="inline h-8 w-8" />
                 </div>
                 <div className="text-sm text-blue-800 capitalize mt-1">{item.weather[0].description}</div>
                 <div className="text-xs text-blue-600 mt-2">Kelembapan: {item.main.humidity}% | Angin: {item.wind.speed} m/s</div>
@@ -250,7 +251,7 @@ export function GapoktanDashboard() {
         <Card className="harvest-card">
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
             <CardTitle className="text-sm font-medium">Total Panen Bulan Ini</CardTitle>
-            <Wheat className="h-4 w-4 text-earth-green-600" />
+            {/* <Wheat className="h-4 w-4 text-earth-green-600" /> */}
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold text-earth-green-700">{stat.loading ? '...' : totalHarvest.toLocaleString()} kg</div>

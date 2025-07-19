@@ -133,10 +133,10 @@ export default function AgendaPage() {
             <h1 className="text-3xl font-bold text-earth-brown-800">Agenda</h1>
             <p className="text-earth-brown-600 mt-1">Kelola jadwal dan kegiatan harian</p>
           </div>
-          <Button className="bg-earth-green-600 hover:bg-earth-green-700">
+          {/* <Button className="bg-earth-green-600 hover:bg-earth-green-700">
             <Plus className="h-4 w-4 mr-2" />
             Tambah Agenda
-          </Button>
+          </Button> */}
         </div>
 
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">

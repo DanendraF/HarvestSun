@@ -42,7 +42,7 @@ export function PenyuluhDashboard() {
     api.getProfile(user.id).then(res => {
       // Asumsi user punya field wilayah
       const wilayah = res?.profile?.wilayah || '';
-      fetch(`/api/gapoktan?wilayah=${encodeURIComponent(wilayah)}`)
+      fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/gapoktan?wilayah=${encodeURIComponent(wilayah)}`)
         .then(res => res.json())
         .then(async res => {
           const gapoktanList = res.data || [];
@@ -88,7 +88,7 @@ export function PenyuluhDashboard() {
           const currentMonth = now.getMonth();
           const currentYear = now.getFullYear();
           const panenPerGapoktan = await Promise.all(gapoktanList.map(async (g: any) => {
-            const res = await fetch(`/api/panen/gapoktan/${g.id}`);
+            const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/panen/gapoktan/${g.id}`);
             const data = await res.json();
             const totalPanen = (data.data || []).filter((p: any) => {
               const panenDate = new Date(p.tanggal);

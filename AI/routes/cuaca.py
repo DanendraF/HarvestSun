@@ -3,7 +3,7 @@ import requests
 from fastapi import APIRouter, Query
 from fastapi.responses import JSONResponse
 
-router = APIRouter()
+router = APIRouter(prefix="/api")
 OPENWEATHER_API_KEY = os.getenv("OPENWEATHER_API_KEY")
 
 @router.get("/api/cuaca")

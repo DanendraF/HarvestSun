@@ -4,7 +4,7 @@ from fastapi import Request
 from fastapi.responses import JSONResponse
 from services.history_service import get_history, delete_history, get_history_detail
 
-router = APIRouter()
+router = APIRouter(prefix="/api")
 
 # Endpoint baru: /api/chat-history?user_id=xxx
 @router.get("/api/chat-history")

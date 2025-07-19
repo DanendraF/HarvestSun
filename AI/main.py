@@ -7,9 +7,9 @@ load_dotenv()
 
 app = FastAPI()
 
-app.include_router(chat.router, prefix="/api")
-app.include_router(history.router, prefix="/api")
-app.include_router(cuaca.router, prefix="/api")
+app.include_router(chat.router)
+app.include_router(history.router)
+app.include_router(cuaca.router)
 
 
 @app.get("/")

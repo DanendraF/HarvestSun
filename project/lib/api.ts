@@ -4,7 +4,7 @@ const BASE_URL = process.env.NEXT_PUBLIC_API_URL;
 
 // AUTH
 export async function register(data: any) {
-  const res = await fetch(`${BASE_URL}/auth/register`, {
+  const res = await fetch(`${BASE_URL}/api/auth/register`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify(data),
@@ -14,7 +14,7 @@ export async function register(data: any) {
 }
 
 export async function login(email: string, password: string) {
-  const res = await fetch(`${BASE_URL}/auth/login`, {
+  const res = await fetch(`${BASE_URL}/api/auth/login`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ email, password }),
@@ -24,17 +24,17 @@ export async function login(email: string, password: string) {
 }
 
 export async function logout() {
-  await fetch(`${BASE_URL}/auth/logout`, { method: 'POST' });
+  await fetch(`${BASE_URL}/api/auth/logout`, { method: 'POST' });
 }
 
 export async function getMe() {
-  const res = await fetch(`${BASE_URL}/auth/me`);
+  const res = await fetch(`${BASE_URL}/api/auth/me`);
   if (!res.ok) return null;
   return res.json();
 }
 
 export async function getProfile(userId: string) {
-  const res = await fetch(`${BASE_URL}/auth/profile?id=${userId}`);
+  const res = await fetch(`${BASE_URL}/api/auth/profile?id=${userId}`);
   if (!res.ok) return null;
   return res.json();
 }

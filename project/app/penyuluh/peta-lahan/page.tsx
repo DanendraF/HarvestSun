@@ -30,14 +30,14 @@ export default function PetaLahanPage() {
     // 1. Fetch gapoktan binaan
     api.getProfile(user.id).then(res => {
       const wilayah = res?.profile?.wilayah || '';
-      fetch(`/api/gapoktan?wilayah=${encodeURIComponent(wilayah)}`)
+      fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/gapoktan?wilayah=${encodeURIComponent(wilayah)}`)
         .then(res => res.json())
         .then(async res => {
           const gapoktanList = res.data || [];
           setGapoktanList(gapoktanList);
           // Fetch lahan untuk setiap gapoktan binaan
           const lahanPromises = gapoktanList.map((g: any) =>
-            fetch(`/api/lahan?gapoktan_id=${g.id}`).then(res => res.json())
+            fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/lahan?gapoktan_id=${g.id}`).then(res => res.json())
           );
           const lahanResults = await Promise.all(lahanPromises);
           // Gabungkan semua lahan

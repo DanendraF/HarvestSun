@@ -57,7 +57,7 @@ export default function ChatbotPage() {
 
   async function fetchHistory() {
     if (!user || !user.id) return;
-    const res = await fetch(`/api/chat-history?user_id=${user.id}`);
+    const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/chat-history?user_id=${user.id}`);
     const data = await res.json();
     if (Array.isArray(data.history)) {
       setHistory(data.history);
@@ -69,7 +69,7 @@ export default function ChatbotPage() {
   }
 
   async function fetchHistoryDetail(chat_id: string) {
-    const res = await fetch(`/api/chat-history/detail?chat_id=${chat_id}`);
+    const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/chat-history/detail?chat_id=${chat_id}`);
     const data = await res.json();
     if (data && data.messages) {
       // Mapping messages dari Supabase ke format state messages FE
@@ -100,7 +100,7 @@ export default function ChatbotPage() {
     setInput("");
     setLoading(true);
     try {
-      const response = await fetch("/api/chatbot", {
+      const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/chatbot`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ user_id: user.id, question, chat_id: activeChatId }),
@@ -145,7 +145,7 @@ export default function ChatbotPage() {
   // Fungsi hapus history
   async function handleDeleteHistory(chat_id: string) {
     try {
-      const res = await fetch(`/api/chat-history/${chat_id}`, { method: "DELETE" });
+      const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/chat-history/${chat_id}`, { method: "DELETE" });
       const data = await res.json();
       if (data.success) {
         setHistory((prev) => prev.filter((item) => item.id !== chat_id));

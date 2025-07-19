@@ -25,7 +25,7 @@ export default function LaporanPage() {
   const [lahanList, setLahanList] = useState<any[]>([]);
   useEffect(() => {
     if (user && user.id) {
-      fetch(`/api/lahan?gapoktan_id=${user.id}`)
+      fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/lahan?gapoktan_id=${user.id}`)
         .then(res => res.json())
         .then(res => setLahanList(res.data || []));
     }

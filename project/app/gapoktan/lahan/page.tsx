@@ -38,7 +38,7 @@ export default function LahanPage() {
   // Fetch lahan dari backend
   useEffect(() => {
     if (!user?.id) return;
-    fetch(`/api/lahan?gapoktan_id=${user.id}`)
+    fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/lahan?gapoktan_id=${user.id}`)
       .then(res => res.json())
       .then(res => setLahan(res.data || []));
   }, [user]);
@@ -59,7 +59,7 @@ export default function LahanPage() {
       return;
     }
     setLoading(true);
-    await fetch("/api/lahan", {
+    await fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/lahan`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
@@ -80,7 +80,7 @@ export default function LahanPage() {
   }
 
   async function refreshLahan() {
-    const res = await fetch(`/api/lahan?gapoktan_id=${user!.id}`);
+    const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/lahan?gapoktan_id=${user!.id}`);
     const data = await res.json();
     setLahan(data.data || []);
   }
@@ -126,7 +126,7 @@ export default function LahanPage() {
       return;
     }
     setLoading(true);
-    await fetch(`/api/lahan/${editId}`, {
+    await fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/lahan/${editId}`, {
       method: "PATCH",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
@@ -150,7 +150,7 @@ export default function LahanPage() {
   async function handleDelete(id: string) {
     if (!confirm("Yakin ingin menghapus lahan ini?")) return;
     setLoading(true);
-    await fetch(`/api/lahan/${id}`, { method: "DELETE" });
+    await fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/lahan/${id}`, { method: "DELETE" });
     await refreshLahan();
     setLoading(false);
   }

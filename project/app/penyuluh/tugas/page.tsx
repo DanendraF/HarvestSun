@@ -85,7 +85,7 @@ export default function TugasPenyuluhPage() {
     } else if (name === 'gapoktan_id') {
       setForm(f => ({ ...f, gapoktan_id: value, wilayah: '' }));
       // Fetch lahan milik gapoktan
-      fetch(`/api/lahan?gapoktan_id=${value}`)
+      fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/lahan?gapoktan_id=${value}`)
         .then(res => res.json())
         .then(res => setLahanList(res.data || []));
     } else {

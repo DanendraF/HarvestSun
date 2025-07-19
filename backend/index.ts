@@ -15,8 +15,13 @@ import reverseGeocodeRouter from './routes/reverseGeocode';
 dotenv.config();
 
 const app = express();
+
 app.use(cors({
   origin: 'https://harvestsun.vercel.app', // ganti dengan domain Vercel kamu
+  credentials: true
+}));
+app.options('*', cors({
+  origin: 'https://harvestsun.vercel.app',
   credentials: true
 }));
 app.use(express.json());

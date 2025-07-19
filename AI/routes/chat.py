@@ -66,10 +66,12 @@ async def chat_legacy(request: Request):
         return JSONResponse(content={"reply": "Maaf, terjadi kesalahan pada AI OpenAI."}, status_code=500)
 
 # Endpoint /api/chatbot tetap dummy/optional
-@router.post("/api/chatbot")
-async def chatbot_endpoint(request: Request):
-    data = await request.json()
-    question = data.get("message") or data.get("question") or ""
+@router.post("/chatbot")
+async def chatbot(request: Request):
+    body = await request.json()
+    user_id = body.get("user_id")
+    question = body.get("question")
+    chat_id = body.get("chat_id")
     if not question:
         return JSONResponse(content={"reply": "Pertanyaan tidak boleh kosong."})
     return JSONResponse(content={"reply": "Gunakan endpoint /chat untuk jawaban AI OpenAI."}) 

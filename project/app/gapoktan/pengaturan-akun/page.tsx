@@ -11,7 +11,7 @@ import { useAuth } from '@/hooks/useAuth';
 import { User, Settings, Shield, Bell, Key } from 'lucide-react';
 
 export default function PengaturanAkunPage() {
-  const { user, switchRole } = useAuth();
+  const { user } = useAuth();
   const [activeTab, setActiveTab] = useState('profile');
 
   if (!user) return null;
@@ -88,7 +88,7 @@ export default function PengaturanAkunPage() {
                   <Label htmlFor="role">Role</Label>
                   <div className="flex items-center gap-4">
                     <Input id="role" value={user.role.replace('_', ' ')} readOnly className="capitalize" />
-                    <Button 
+                    {/* <Button 
                       variant="outline" 
                       onClick={() => {
                         const roles = ['gapoktan', 'penyuluh', 'admin'];
@@ -98,7 +98,7 @@ export default function PengaturanAkunPage() {
                       }}
                     >
                       Switch Role (Demo)
-                    </Button>
+                    </Button> */}
                   </div>
                 </div>
 

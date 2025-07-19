@@ -56,7 +56,7 @@ export default function TugasPenyuluhPage() {
   useEffect(() => {
     if (!loading && user) {
       // Fetch gapoktan satu wilayah dari backend
-      fetch(`${process.env.NEXT_PUBLIC_API_URL}/gapoktan?wilayah=${encodeURIComponent(user.region || '')}`)
+      fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/gapoktan?wilayah=${encodeURIComponent(user.region || '')}`)
         .then(res => res.json())
         .then(res => setGapoktanList(res.data || []))
         .catch(() => setGapoktanList([]));

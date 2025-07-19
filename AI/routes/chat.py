@@ -6,6 +6,8 @@ import openai
 from services.history_service import save_chat_history
 import asyncio
 from concurrent.futures import ThreadPoolExecutor
+from models.schemas import ChatRequest
+from typing import Optional
 
 load_dotenv()
 
@@ -67,11 +69,10 @@ async def chat_legacy(request: Request):
 
 # Endpoint /api/chatbot tetap dummy/optional
 @router.post("/chatbot")
-async def chatbot(request: Request):
-    data = await request.json()
-    question = data.get("message") or data.get("question") or ""
-    user_id = data.get("user_id")
-    chat_id = data.get("chat_id")
+async def chatbot(request: ChatRequest):
+    user_id = request.user_id
+    question = request.question
+    chat_id = request.chat_id
     if not question:
         return JSONResponse(content={"reply": "Pertanyaan tidak boleh kosong."})
 

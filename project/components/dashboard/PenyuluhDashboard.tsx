@@ -44,7 +44,7 @@ export function PenyuluhDashboard() {
       const wilayah = res?.profile?.wilayah || '';
       fetch(`/api/gapoktan?wilayah=${encodeURIComponent(wilayah)}`)
         .then(res => res.json())
-        .then(res => {
+        .then(async res => {
           const gapoktanList = res.data || [];
           setStat(s => ({ ...s, totalGapoktan: gapoktanList.length }));
           const gapoktanIds = gapoktanList.map((g: any) => g.id);
@@ -83,6 +83,20 @@ export function PenyuluhDashboard() {
             setHarvestTrend(Object.values(monthMap));
             setLoadingChart(false);
           });
+          // Fetch panen per gapoktan (bulan ini)
+          const now = new Date();
+          const currentMonth = now.getMonth();
+          const currentYear = now.getFullYear();
+          const panenPerGapoktan = await Promise.all(gapoktanList.map(async (g: any) => {
+            const res = await fetch(`/api/panen/gapoktan/${g.id}`);
+            const data = await res.json();
+            const totalPanen = (data.data || []).filter((p: any) => {
+              const panenDate = new Date(p.tanggal);
+              return panenDate.getMonth() === currentMonth && panenDate.getFullYear() === currentYear;
+            }).reduce((acc: number, p: any) => acc + Number(p.jumlah), 0);
+            return { nama: g.nama, totalPanen };
+          }));
+          setGapoktanPanen(panenPerGapoktan);
         });
     });
     // Fetch tugas penyuluh

@@ -100,7 +100,7 @@ export default function ChatbotPage() {
     setInput("");
     setLoading(true);
     try {
-      const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/chatbot`, {
+      const response = await fetch(`${process.env.NEXT_PUBLIC_AI_URL}/api/chatbot`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ user_id: user.id, question, chat_id: activeChatId }),

@@ -14,7 +14,7 @@ const KOTA_COORDS: Record<string, { lat: number; lon: number }> = {
   'Wonosari': { lat: -7.966620, lon: 110.606674 }, // alias Gunungkidul
 };
 
-router.get('/cuaca', async (req, res) => {
+router.get('/', async (req, res) => {
   const { kota } = req.query;
   if (!kota) return res.status(400).json({ error: 'Parameter kota wajib diisi' });
   const kotaStr = String(kota);

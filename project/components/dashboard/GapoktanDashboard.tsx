@@ -215,11 +215,8 @@ export function GapoktanDashboard() {
 
   // Gunakan CuacaCarousel sebagai hook agar bisa ambil cuacaAlerts
   const { Carousel: CuacaCarouselView, cuacaAlerts } = (CuacaCarousel as any)();
-  // Gabungkan weatherAlerts lokal dan cuacaAlerts dari API
-  const allWeatherAlerts = [
-    ...weatherAlerts,
-    ...(cuacaAlerts || [])
-  ];
+  // Gunakan hanya cuacaAlerts dari backend agar realtime
+  const allWeatherAlerts = cuacaAlerts || [];
 
   const [tugasTerbaru, setTugasTerbaru] = useState<any[]>([]);
   const [laporanTerbaru, setLaporanTerbaru] = useState<any[]>([]);
@@ -268,9 +265,9 @@ export function GapoktanDashboard() {
             <CloudRain className="h-4 w-4 text-earth-yellow-600" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold text-earth-yellow-700">{weatherAlerts.length}</div>
+            <div className="text-2xl font-bold text-earth-yellow-700">{allWeatherAlerts.length}</div>
             <p className="text-xs text-earth-brown-600">
-              {weatherAlerts.filter(alert => alert.severity === 'high').length} peringatan tinggi
+              {allWeatherAlerts.filter((alert: any) => alert.severity === 'high').length} peringatan tinggi
             </p>
           </CardContent>
         </Card>
@@ -356,7 +353,7 @@ export function GapoktanDashboard() {
             {allWeatherAlerts.length === 0 && (
               <div className="text-sm text-earth-brown-600">Tidak ada peringatan cuaca saat ini.</div>
             )}
-            {allWeatherAlerts.map((alert, idx) => (
+            {allWeatherAlerts.map((alert: any, idx: number) => (
               <div key={alert.event || alert.id || idx} className="flex items-start gap-3 p-3 bg-earth-yellow-50 rounded-lg border border-earth-yellow-200">
                 <AlertTriangle className={`h-5 w-5 mt-0.5 text-earth-yellow-600`} />
                 <div className="flex-1">

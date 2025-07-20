@@ -59,7 +59,7 @@ function CuacaCarousel() {
     Promise.all(
       WILAYAH_JOGJA.map(async (wil) => {
         try {
-          const res = await fetch(`/api/cuaca?kota=${encodeURIComponent(wil.query)}`);
+          const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/cuaca?kota=${encodeURIComponent(wil.query)}`);
           const json = await res.json();
           return { ...wil, ...json };
         } catch {

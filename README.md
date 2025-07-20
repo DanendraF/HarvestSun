@@ -145,4 +145,83 @@ SUPABASE_KEY=<SUPABASE_SERVICE_ROLE_KEY>
 
 ---
 
-Jika ada pertanyaan atau membutuhkan bantuan lebih lanjut, silakan hubungi tim pengembang atau cek dokumentasi di setiap file. 
+## Dokumentasi API (Backend)
+
+Seluruh endpoint backend tersedia di file [EXPOSMS4.postman_collection.json](./EXPOSMS4.postman_collection.json) yang dapat diimpor ke Postman untuk eksplorasi dan pengujian.
+
+Contoh endpoint utama:
+- `POST /api/auth/register` — Registrasi user
+- `POST /api/auth/login` — Login user
+- `GET /api/cuaca?kota=Yogyakarta` — Data cuaca
+- `GET /api/panen` — Daftar panen
+- `GET /api/lahan?gapoktan_id=...` — Daftar lahan
+- `GET /api/tugas` — Daftar tugas
+- `GET /api/gapoktan?wilayah=...` — Daftar gapoktan
+- `GET /api/laporan` — Daftar laporan
+- `GET /api/reverse-geocode?lat=...&lon=...` — Reverse geocoding
+- ... (lihat koleksi Postman untuk endpoint lengkap)
+
+---
+
+## Menjalankan Backend
+
+1. Masuk ke folder backend:
+   ```
+   cd backend
+   ```
+2. Install dependencies:
+   ```
+   npm install
+   ```
+3. Buat file `.env` dan isi variabel yang dibutuhkan (lihat contoh di atas).
+4. Jalankan backend:
+   ```
+   npm run dev
+   ```
+   Default: [http://localhost:4000](http://localhost:4000)
+
+---
+
+
+## Cara Menggunakan Koleksi Postman
+
+1. Buka aplikasi Postman.
+2. Pilih menu **Import** → **Upload Files** → pilih file `EXPOSMS4.postman_collection.json`.
+3. Setelah diimpor, semua endpoint siap diuji.
+4. Ubah variable `base_url` sesuai alamat backend Anda jika perlu.
+
+---
+
+## Kontribusi
+
+Jika ingin berkontribusi, silakan buat branch baru dan ajukan pull request. Ikuti standar penamaan branch dan pastikan kode sudah teruji sebelum merge. Untuk diskusi fitur atau bug, gunakan fitur Issues di repository ini.
+
+---
+
+## Testing
+
+Jalankan perintah berikut untuk menjalankan test (jika tersedia):
+```
+npm test
+```
+Pastikan semua test lulus sebelum melakukan pull request.
+
+---
+
+## Troubleshooting
+
+- **Error koneksi ke Supabase:** Pastikan variabel environment sudah benar dan Supabase aktif.
+- **Port sudah digunakan:** Ubah port di file konfigurasi atau matikan aplikasi lain yang menggunakan port tersebut.
+- **Gagal upload file:** Pastikan kredensial Supabase Storage sudah benar dan quota storage cukup.
+- **Masalah dependensi:** Jalankan `npm install` ulang di folder frontend/backend.
+
+---
+
+
+## Kontak
+
+Untuk pertanyaan lebih lanjut, hubungi: 
+- Email: harvestsunmari@gmail.com
+- Atau gunakan fitur Issues di repository ini.
+
+--- 

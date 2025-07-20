@@ -156,7 +156,7 @@ export function GapoktanDashboard() {
     if (!user || !user.id) return;
     setStat(s => ({ ...s, loading: true }));
     // Fetch lahan
-    fetch(`/api/lahan?gapoktan_id=${user.id}`)
+    fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/lahan?gapoktan_id=${user.id}`)
       .then(res => res.json())
       .then(res => {
         const lahan = res.data || [];
@@ -224,11 +224,11 @@ export function GapoktanDashboard() {
   useEffect(() => {
     if (user && user.id) {
       // Fetch tugas
-      fetch(`/api/tugas/gapoktan/${user.id}`)
+      fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/tugas/gapoktan/${user.id}`)
         .then(res => res.json())
         .then(res => setTugasTerbaru(res.data?.slice(0, 4) || []));
       // Fetch laporan
-      fetch(`/api/laporan/gapoktan/${user.id}`)
+      fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/laporan/gapoktan/${user.id}`)
         .then(res => res.json())
         .then(res => setLaporanTerbaru(res.data?.slice(0, 4) || []));
     }
